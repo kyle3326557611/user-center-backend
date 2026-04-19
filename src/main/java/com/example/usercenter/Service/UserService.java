@@ -43,8 +43,10 @@ public interface UserService extends IService<User> {
     User getSafetyUser(User originUser);
 
     /**
-     * 用户注销
-     *
+     * 用户注销（基于 Redis Token）
+     * @param token 前端传来的门票
+     * @return 是否注销成功
      */
-    int userLogout(HttpServletRequest request);
+    boolean userLogout(String token);
+
 }

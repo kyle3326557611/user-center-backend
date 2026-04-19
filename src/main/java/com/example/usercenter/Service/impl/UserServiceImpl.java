@@ -12,6 +12,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -31,6 +32,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
 
     //为了混淆密码
     private static final String SALT = "kyle";
@@ -139,9 +144,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
 
         //3.记录用户的登陆状态
-        User safetyUser = getSafetyUser(user);
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
-        return safetyUser;
+
+        return getSafetyUser(user);
     }
 
     /**
@@ -171,13 +175,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return safetyUser;
     }
 
-    /**
-     * 用户注销
-     *
-     */
     @Override
-    public int userLogout(HttpServletRequest request) {
-        request.getSession().removeAttribute(USER_LOGIN_STATE);
-        return 1;
+    public boolean userLogout(String token) {
+        if (StringUtils.isBlank(token)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "未提供登录凭证");
+        }
+        try {
+            return stringRedisTemplate.delete("user:login:" + token);
+        } catch (Exception e) {
+            log.error("Redis 注销失败，token: {}", token, e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注销失败");
+        }
     }
+
+
 }
